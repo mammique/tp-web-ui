@@ -1,0 +1,47 @@
+body {
+    padding: 20px 0;
+}
+
+#main {
+    padding-top: 68px;
+    background: transparent url(../style/traceparent_logo_text_h48.png) 20px top no-repeat;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+#auth {
+    text-align: right;
+    height: 48px;
+    margin-top: -68px;
+}
+
+#auth li {
+    float: none;
+    display: inline-block;
+}
+
+#auth.authenticated .unauthenticated {
+    display: none;
+}
+
+#auth #user .close {
+    font-size: 34px;
+    margin-left: 7px;
+    margin-top: -2px;
+}
+
+#auth #user:hover .close {
+    color: lightgray;
+}
+
+#auth #user {
+    display: none;
+    background-repeat: no-repeat;
+    background-position: center left;
+    padding-left: 42px;
+}
+
+#auth.authenticated #user {
+    display: inline-block;
+}

@@ -1,0 +1,274 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+	"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+	<title>Traceparent</title>
+    <link rel="icon" type="image/png" href="../style/traceparent_logo_128.png" />
+    <link rel="stylesheet" href="../style/bootstrap-cosmo.min.css" type="text/css">
+    <link rel="stylesheet" href="style.css" type="text/css">
+	<link rel="icon" type="image/png" href="../style/traceparent_logo_128.png" />
+    <script type="text/javascript" src="../rest_framework/js/jquery-1.8.1-min.js"></script>
+    <script type="text/javascript" src="jquery.localize.js"></script>
+    <script type="text/javascript" src="../rest_framework/js/bootstrap.min.js"></script>
+</head>
+
+<body>
+
+<div id="main" class="container-fluid">
+    <ul class="nav nav-pills" id="auth">
+        <li><a id="user"></a></li>
+        <li id="login" class="unauthenticated"><a href="#/auth/login/">Login</a></li>
+        <li id="signup" class="unauthenticated"><a href="#/auth/user/create/">Signup</a></li>
+    </ul>
+    <div id="object-form"></div>
+</div>
+
+<script type="text/javascript">
+
+var headers;
+var langs = [];
+var base  = '../..';
+var of    = $('#object-form');
+
+$.ajax({'url': base + '/extra/misc/client_headers_bounce/',
+        'async': false,
+        'dataType': 'json',
+        'complete': function(xhr) { headers = $.parseJSON(xhr.responseText) }
+       }
+);
+
+if(headers['HTTP_ACCEPT_LANGUAGE']) {
+
+    console.log(headers['HTTP_ACCEPT_LANGUAGE'].split());
+}
+
+$(window).on('hashchange', function() { console.log('load'); load(); });
+
+var human_form = {
+
+    'static': {
+        'i18n': {
+            'fr': {
+                '#login': 'Identification',
+                '#signup': "S'enregistrer",
+            },
+        },
+    },
+
+    '/auth/user/create/': {
+
+        'on_load': function(form) {
+
+            var pwd = $('#id_password', form).parent().parent();
+            var pwd_conf = pwd.clone();
+            $('#id_password', pwd_conf).attr('name', null);
+            $('#id_password', pwd_conf).attr('id', 'id_password_conf');
+            $('label', pwd_conf).attr('for', 'id_password_conf');
+            $('label', pwd_conf).text('password_confirm');
+            pwd.after(pwd_conf);
+        },
+
+        'on_submit': function(form) {
+
+            var group = $('#id_password_conf', form).parent().parent();
+            group.removeClass('error');
+            $('.help-block', group).remove();
+
+            if($('#id_password', form).val() != $('#id_password_conf', form).val()) { 
+
+                group.addClass('error');
+                var error_el = $('<span class="help-block"></span>');
+                error_el.text('Password mismatch.');
+                $('#id_password_conf', form).after(error_el);
+
+                return false;
+            }
+
+            return true;
+        },
+    },
+
+    '/auth/login/': {
+
+        'after_submit': whoami,
+
+        'i18n': {
+
+            'en': {
+                'legend':                        'Login',
+                'label[for="id_email"]':         'Email',
+                'label[for="id_password"]':      'Password',
+                'label[for="id_password_conf"]': 'Confirm password',
+            },
+
+            'fr': {
+                'legend':                        'Identification',
+                'label[for="id_email"]':         'Email',
+                'label[for="id_password"]':      'Mot-de-passe',
+                'label[for="id_password_conf"]': 'Confirmation Mot-de-passe',
+            }
+        }
+    }
+};
+
+
+function whoami() {
+
+    $.ajax({'url': base + '/auth/whoami/',
+            'cache': false,
+            'dataType': 'json',
+            'complete': function(xhr) {
+
+                var data = $.parseJSON(xhr.responseText);
+
+                if(!data) {
+
+                    $('#auth').removeClass('authenticated');
+                    $('#auth #auth').css({'background-image': 'none'});
+
+                } else {
+
+                    $('#auth').addClass('authenticated');
+                    $('#auth #user').text(data['name']);
+                    $('#auth #user').css({'background-image': "url(https://www.gravatar.com/avatar/" +
+                                          data['email_md5'] + "?s=34)"})
+
+                    var logout = $('<button type="button" class="close">&times;</button>');
+                    logout.on('click', function() {
+                        $.ajax({'url': base + '/auth/logout/',
+                                'async': false,
+                                'complete': function() { whoami(); path_set('/auth/login/'); }
+                               })
+                        });
+
+                    $('#auth #user').append(logout);
+                }
+            }
+        }
+    );
+}
+
+
+function path_get() {
+
+    var split = (''+document.location).split('#')
+    if(split.length >= 2) return split[1];
+    return '';
+}
+
+
+function path_set(p) {
+
+    p_prev = path_get();
+    document.location = '#' + p;
+    if(p == p_prev) load();
+}
+
+
+whoami();
+
+
+function load() {
+
+    var path = path_get();
+    var h = null;
+    if(human_form[path]) h = human_form[path];
+
+    of.empty();
+
+    of.load(base + path + '?format=form' + ' form', function(e) {
+
+        if(h && h['on_load']) h['on_load'](of);
+
+        var first = $('input[type="password"],input[type="text"],select,textarea', of)[0];
+        if(first) first.focus();
+
+        var form = $('form', of);
+        form.append($('input[type="hidden"]').remove()); // Bootstrap's CSS bugs if first element.
+        form.attr('action', base + path);
+
+        form.on('submit', function() {
+
+            if(h && h['on_submit'] && !h['on_submit'](of)) return false;
+
+            $.ajax({'type': form.attr('method'),
+                    'url': base + path,
+                    'dataType': 'json',
+                    'data': form.serialize(),
+                    'complete': function(xhr, status) {
+
+                        $('input,select,textarea', form).attr('disabled', null);
+                        $('.control-group', form).removeClass('error');
+                        $('.help-block,.alert', form).remove();
+
+                        if(h && h['after_submit']) h['after_submit']();
+
+                        if(status == "success") {
+
+                            form.html('<div class="alert alert-success">✔</div>');
+                            return;
+                        }
+
+                        var data = $.parseJSON(xhr.responseText);
+
+                        if(!data) {
+
+                            $('fieldset legend', form).after(
+                                '<div class="alert alert-error">' +
+        //                        '<button type="button" class="close" data-dismiss="alert">&times;</button>' +
+                                '<strong>Error!</strong> Something went wrong while communicating with the server.</div>');
+                            return;
+                        }
+
+                        if(data['details']) {
+
+                            var al = $('<div class="alert alert-error"></div>');
+                            al.text(data['details']);
+                            $('fieldset legend', form).after(al);
+                        }
+
+                        if(data['non_field_errors']) $.each(data['non_field_errors'], function(k, error) {
+
+                            var al = $('<div class="alert alert-error"></div>');
+                            al.text(error);
+                            $('fieldset legend', form).after(al);
+
+                        });
+
+                        $('.control-group', form).each(function(i, group) {
+
+                               var field = $('.controls > *:first', group);
+                               var id = field.attr('id');
+
+                               if(data[id.slice(3)]) {
+
+                                   $(group).addClass('error');
+
+                                   $.each(data[id.slice(3)], function(j, error) {
+
+                                       error_el = $('<span class="help-block"></span>');
+                                       error_el.text(error);
+                                       field.after(error_el);
+                                   });
+                                }
+                            }
+                        );
+                    }});
+
+            $('input,select,textarea', form).attr('disabled', 'disabled');
+
+            return false;
+        });
+    });
+}
+
+
+load();
+
+</script>
+
+</body>
+</html>
