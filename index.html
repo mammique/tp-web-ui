@@ -11,7 +11,6 @@
     <link rel="stylesheet" href="style.css" type="text/css">
 	<link rel="icon" type="image/png" href="../style/traceparent_logo_128.png" />
     <script type="text/javascript" src="../rest_framework/js/jquery-1.8.1-min.js"></script>
-    <script type="text/javascript" src="jquery.localize.js"></script>
     <script type="text/javascript" src="../rest_framework/js/bootstrap.min.js"></script>
 </head>
 
@@ -28,10 +27,10 @@
 
 <script type="text/javascript">
 
-var headers;
-var langs = [];
-var base  = '../..';
-var of    = $('#object-form');
+var headers   = {};
+var langs_rev = [];
+var base      = '../..';
+var of        = $('#object-form');
 
 $.ajax({'url': base + '/extra/misc/client_headers_bounce/',
         'async': false,
@@ -42,8 +41,32 @@ $.ajax({'url': base + '/extra/misc/client_headers_bounce/',
 
 if(headers['HTTP_ACCEPT_LANGUAGE']) {
 
-    console.log(headers['HTTP_ACCEPT_LANGUAGE'].split());
+    var langs_sort = [];
+
+    $.each(headers['HTTP_ACCEPT_LANGUAGE'].split(','), function(k, v) {
+
+        var l_split = v.split(';');
+        var l, q;
+
+        l = l_split[0];
+
+        if(l_split.length == 2) {
+
+            var q_split = l_split[1].split('=');
+            if(q_split.length == 2 && q_split[0] == 'q') q = parseFloat(q_split[1]);
+        }
+
+        if(!q) q = 1;
+
+        langs_sort.push([q, l]);
+    });
+
+    langs_sort.sort(function(a, b) { return a[0] - b[0]; } );
+
+    $.each(langs_sort, function(k, v) { langs_rev.push(v[1]) });
 }
+
+if(langs_rev.indexOf('en') == -1) langs_rev = ['en'].concat(langs_rev);
 
 $(window).on('hashchange', function() { console.log('load'); load(); });
 
