@@ -239,9 +239,12 @@ whoami();
 
 function load() {
 
-    var path = path_get();
-    var h = null;
+    var path               = path_get();
+    var h                  = null;
     if(human_form[path]) h = human_form[path];
+
+    $('#auth li').removeClass('active');
+    $('#auth a[href="#' + path + '"]').parent().addClass('active');
 
     of.fadeOut(100, function() { of.load(base + path + '?format=form' + ' form', function(e) {
 
