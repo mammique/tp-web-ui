@@ -17,6 +17,7 @@
 <body>
 
 <div id="main" class="container-fluid">
+    <a id="website" href="http://traceparent.com/"><img src="traceparent_logo.png" alt="Traceparent" target="_blank" /></a>
     <ul class="nav nav-pills" id="auth">
         <li><a id="user"></a></li>
         <li id="login" class="unauthenticated"><a href="#/auth/login/">Login</a></li>
@@ -75,13 +76,17 @@ var human_form = {
     'static': {
         'i18n': {
             'fr': {
-                '#login': 'Identification',
-                '#signup': "S'enregistrer",
+                '#login > a': 'Identification',
+                '#signup > a': "S'enregistrer",
             },
         },
     },
 
     '/auth/user/create/': {
+
+        'fields_required': ['id_email', 'id_name', 'id_password', 'id_password_conf'],
+
+        'after_submit': whoami,
 
         'on_load': function(form) {
 
@@ -112,9 +117,30 @@ var human_form = {
 
             return true;
         },
+
+        'i18n': {
+
+            'en': {
+                'legend':                        'Create account',
+                'label[for="id_email"]':         'Email',
+                'label[for="id_name"]':          'Name',
+                'label[for="id_password"]':      'Password',
+                'label[for="id_password_conf"]': 'Confirm password',
+            },
+
+            'fr': {
+                'legend':                        'Créer un compte',
+                'label[for="id_email"]':         'Email',
+                'label[for="id_name"]':          'Nom',
+                'label[for="id_password"]':      'Mot-de-passe',
+                'label[for="id_password_conf"]': 'Confirmation Mot-de-passe',
+            }
+        }
     },
 
     '/auth/login/': {
+
+        'fields_required': ['id_email', 'id_password'],
 
         'after_submit': whoami,
 
@@ -124,19 +150,36 @@ var human_form = {
                 'legend':                        'Login',
                 'label[for="id_email"]':         'Email',
                 'label[for="id_password"]':      'Password',
-                'label[for="id_password_conf"]': 'Confirm password',
             },
 
             'fr': {
                 'legend':                        'Identification',
                 'label[for="id_email"]':         'Email',
                 'label[for="id_password"]':      'Mot-de-passe',
-                'label[for="id_password_conf"]': 'Confirmation Mot-de-passe',
             }
         }
     }
 };
 
+
+function humanize_i18n(section, el) {
+
+    if(el == undefined) el = $('html');
+
+    if(!human_form[section] || !human_form[section]['i18n']) return;
+
+    var i18n = human_form[section]['i18n'];
+
+    $.each(langs_rev, function(k, l) {
+
+        if(i18n[l]) $.each(i18n[l], function(selector, string) {
+
+            $(selector, el).text(string);
+        });
+    });
+}
+
+humanize_i18n('static');
 
 function whoami() {
 
@@ -200,11 +243,13 @@ function load() {
     var h = null;
     if(human_form[path]) h = human_form[path];
 
-    of.empty();
+    of.fadeOut(100, function() { of.load(base + path + '?format=form' + ' form', function(e) {
 
-    of.load(base + path + '?format=form' + ' form', function(e) {
+        of.hide();
+        of.fadeIn(200);
 
         if(h && h['on_load']) h['on_load'](of);
+        humanize_i18n(path, of);
 
         var first = $('input[type="password"],input[type="text"],select,textarea', of)[0];
         if(first) first.focus();
@@ -215,6 +260,35 @@ function load() {
 
         form.on('submit', function() {
 
+
+            $('.control-group', form).removeClass('error');
+            $('.help-block,.alert', form).remove();
+
+            if(h && h['fields_required']) {
+
+                var required_wrong = false;
+
+                $.each(h['fields_required'], function(k, id) {
+
+                    var field = $('#' + id, of);
+
+                    if(field) {
+
+                       if(field.val() == '') {
+
+                            required_wrong = true;
+                            field.parent().parent().addClass('error');
+                            error_el = $('<span class="help-block"></span>');
+                            error_el.text('This field is required.');
+                            field.after(error_el);
+
+                        }
+                    }
+                });
+
+                if(required_wrong) return false;
+            }
+
             if(h && h['on_submit'] && !h['on_submit'](of)) return false;
 
             $.ajax({'type': form.attr('method'),
@@ -224,8 +298,10 @@ function load() {
                     'complete': function(xhr, status) {
 
                         $('input,select,textarea', form).attr('disabled', null);
+
+/*                        $('input,select,textarea', form).attr('disabled', null);
                         $('.control-group', form).removeClass('error');
-                        $('.help-block,.alert', form).remove();
+                        $('.help-block,.alert', form).remove(); */
 
                         if(h && h['after_submit']) h['after_submit']();
 
@@ -285,7 +361,7 @@ function load() {
 
             return false;
         });
-    });
+    })});
 }
 
 
