@@ -6,12 +6,12 @@
 <head>
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
 	<title>Traceparent</title>
-    <link rel="icon" type="image/png" href="../style/traceparent_logo_128.png" />
-    <link rel="stylesheet" href="../style/bootstrap-cosmo.min.css" type="text/css">
+    <link rel="icon" type="image/png" href="traceparent_logo_128.png" />
+    <link rel="stylesheet" href="bootstrap-cosmo.min.css" type="text/css">
     <link rel="stylesheet" href="style.css" type="text/css">
-	<link rel="icon" type="image/png" href="../style/traceparent_logo_128.png" />
-    <script type="text/javascript" src="../rest_framework/js/jquery-1.8.1-min.js"></script>
-    <script type="text/javascript" src="../rest_framework/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="config.js"></script>
+    <script type="text/javascript" src="jquery-1.8.1-min.js"></script>
+    <script type="text/javascript" src="bootstrap.min.js"></script>
 </head>
 
 <body>
@@ -30,7 +30,6 @@
 
 var headers   = {};
 var langs_rev = [];
-var base      = '../..';
 var of        = $('#object-form');
 
 $.ajax({'url': base + '/extra/misc/client_headers_bounce/',
