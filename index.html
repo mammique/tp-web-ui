@@ -17,7 +17,7 @@
 <body>
 
 <div id="main" class="container-fluid">
-    <a id="website" href="http://traceparent.com/"><img src="traceparent_logo.png" alt="Traceparent" target="_blank" /></a>
+    <a id="website" href="http://traceparent.com/" target="_blank"><img src="traceparent_logo.png" alt="Traceparent" /></a>
     <ul class="nav nav-pills" id="auth">
         <li><a id="user"></a></li>
         <li id="login" class="unauthenticated"><a href="#/auth/login/">Login</a></li>
@@ -69,7 +69,7 @@ if(headers['HTTP_ACCEPT_LANGUAGE']) {
 
 if(langs_rev.indexOf('en') == -1) langs_rev = ['en'].concat(langs_rev);
 
-$(window).on('hashchange', function() { console.log('load'); load(); });
+$(window).on('hashchange', load);
 
 var human_form = {
 
@@ -86,7 +86,22 @@ var human_form = {
 
         'fields_required': ['id_email', 'id_name', 'id_password', 'id_password_conf'],
 
-        'after_submit': whoami,
+        'after_submit': function(xhr, form) {
+
+            $.ajax({'url':   base + '/auth/login/',
+                    'async': false,
+                    'type': 'POST',
+                    'data':  {'email':    $('#id_email', form).val(),
+                              'password': $('#id_password', form).val()},
+                   }
+            );
+
+            whoami();
+
+            var q = path_info()['query']; if(q['next']) document.location = q['next'];
+
+            return true;
+        },
 
         'on_load': function(form) {
 
@@ -122,6 +137,7 @@ var human_form = {
 
             'en': {
                 'legend':                        'Create account',
+                '#submit':                       'Create account',
                 'label[for="id_email"]':         'Email',
                 'label[for="id_name"]':          'Name',
                 'label[for="id_password"]':      'Password',
@@ -130,6 +146,7 @@ var human_form = {
 
             'fr': {
                 'legend':                        'Créer un compte',
+                '#submit':                       'Créer compte',
                 'label[for="id_email"]':         'Email',
                 'label[for="id_name"]':          'Nom',
                 'label[for="id_password"]':      'Mot-de-passe',
@@ -142,20 +159,96 @@ var human_form = {
 
         'fields_required': ['id_email', 'id_password'],
 
-        'after_submit': whoami,
+        'after_submit': function(xhr, form) {
+
+            whoami();
+
+            var q = path_info()['query']; if(q['next']) document.location = q['next'];
+
+            return true;
+        },
+
+        'on_load': function(form) {
+
+            $('#form_info', form).append('<p id="form_info_pwd_reset"><span>Click</span> ' +
+                '<a href="#/auth/password_reset/">here</a> ' +
+                '<span>if you forgot or did not set yet your password</span>.</p>');
+        },
 
         'i18n': {
 
             'en': {
                 'legend':                        'Login',
+                '#submit':                       'Login',
                 'label[for="id_email"]':         'Email',
                 'label[for="id_password"]':      'Password',
             },
 
             'fr': {
-                'legend':                        'Identification',
+                'legend':                                 'Identification',
+                '#submit':                                'Identification',
+                'label[for="id_email"]':                  'Email',
+                'label[for="id_password"]':               'Mot-de-passe',
+                '#form_info_pwd_reset span:nth-child(1)': 'Cliquez',
+                '#form_info_pwd_reset a':                 'ici',
+                '#form_info_pwd_reset span:nth-child(3)': "si vous avez oublié ou si vous n'avez pas encore défini votre mot-de-passe",
+            }
+        }
+    },
+
+    '/auth/password_reset/': {
+
+        'fields_required': ['id_email'],
+
+        /* 'after_submit': function(xhr, form) {
+
+            form.html('<div class="alert alert-success"></div>');
+            return false;
+        }, */
+
+        'i18n': {
+
+            'en': {
+                'legend':                        'Reset password',
+                '#submit':                       'Send',
+                'label[for="id_email"]':         'Enter your email',
+            },
+
+            'fr': {
+                'legend':                        'Réinitialisation du mot-passe',
+                '#submit':                       'Envoyer',
+                'label[for="id_email"]':         'Entrez votre email',
+            }
+        }
+    },
+
+    '/auth/user/UUID/update/': {
+
+        'after_submit': function(xhr, form) {
+
+            whoami();
+            $('fieldset legend', form).after('<div class="alert alert-success">OK</div>');
+            return false;
+        },
+
+        'i18n': {
+
+            'en': {
+                'legend':                        'Update profile',
+                '#submit':                       'Update',
                 'label[for="id_email"]':         'Email',
+                'label[for="id_name"]':          'Name',
+                'label[for="id_password"]':      'Password',
+//                'label[for="id_password_conf"]': 'Confirm password',
+            },
+
+            'fr': {
+                'legend':                        'Mise à jour du profil',
+                '#submit':                       'Mettre à jour',
+                'label[for="id_email"]':         'Email',
+                'label[for="id_name"]':          'Nom',
                 'label[for="id_password"]':      'Mot-de-passe',
+//                'label[for="id_password_conf"]': 'Confirmation Mot-de-passe',
             }
         }
     }
@@ -218,17 +311,41 @@ function whoami() {
 }
 
 
-function path_get() {
+function path_info() {
+
+    var path  = '';
+    var query = {};
 
     var split = (''+document.location).split('#')
-    if(split.length >= 2) return split[1];
-    return '';
+    if(split.length >= 2) path = split[1];
+
+    split = path.split('?');
+
+    if(split.length >= 2) {
+
+        path              = split[0];
+        var query_entries = split[1].split('&');
+
+        $.each(query_entries, function(k, entry) {
+
+            var entry_split = entry.split('=');
+            query[decodeURIComponent(entry_split[0])] = decodeURIComponent(entry_split[1]);
+        });
+    }
+
+    return {'path': path,
+            'path_no_id': path.replace(/([\w]{8}-[\w]{4}-[\w]{4}-[\w]{4}-[\w]{12})/g, 'UUID'),
+            'query': query};
 }
 
 
 function path_set(p) {
 
-    p_prev = path_get();
+    p_prev = '';
+
+    var split = (''+document.location).split('#')
+    if(split.length >= 2) p_prev = split[1];
+
     document.location = '#' + p;
     if(p == p_prev) load();
 }
@@ -239,9 +356,12 @@ whoami();
 
 function load() {
 
-    var path               = path_get();
-    var h                  = null;
-    if(human_form[path]) h = human_form[path];
+    var p_info                   = path_info();
+    var path                     = p_info['path'];
+    var path_no_id               = p_info['path_no_id'];
+    var query                    = p_info['query'];
+    var h                        = null;
+    if(human_form[path_no_id]) h = human_form[path_no_id];
 
     $('#auth li').removeClass('active');
     $('#auth a[href="#' + path + '"]').parent().addClass('active');
@@ -249,10 +369,10 @@ function load() {
     of.fadeOut(100, function() { of.load(base + path + '?format=form' + ' form', function(e) {
 
         of.hide();
-        of.fadeIn(200);
 
+        $('fieldset', of).after('<div class="well" id="form_info"></div>');
         if(h && h['on_load']) h['on_load'](of);
-        humanize_i18n(path, of);
+        humanize_i18n(path_no_id, of);
 
         var first = $('input[type="password"],input[type="text"],select,textarea', of)[0];
         if(first) first.focus();
@@ -261,8 +381,12 @@ function load() {
         form.append($('input[type="hidden"]').remove()); // Bootstrap's CSS bugs if first element.
         form.attr('action', base + path);
 
-        form.on('submit', function() {
+        form.append('<input type="hidden" value="' + $('#submit', form).val() +
+                    '" name="' + $('#submit', form).attr('name') + '" />');
 
+        of.fadeIn(200);
+
+        form.on('submit', function() {
 
             $('.control-group', form).removeClass('error');
             $('.help-block,.alert', form).remove();
@@ -277,10 +401,12 @@ function load() {
 
                     if(field) {
 
-                       if(field.val() == '') {
+                        var group = field.parent().parent();
+
+                        if(field.val().match(/^[\t\n\r\f\v ]*$/) != null) {
 
                             required_wrong = true;
-                            field.parent().parent().addClass('error');
+                            group.addClass('error');
                             error_el = $('<span class="help-block"></span>');
                             error_el.text('This field is required.');
                             field.after(error_el);
@@ -294,27 +420,29 @@ function load() {
 
             if(h && h['on_submit'] && !h['on_submit'](of)) return false;
 
-            $.ajax({'type': form.attr('method'),
+            $.ajax({// 'type': $('#submit', form).val(),
+                    // 'type': form.attr('method'),
+                    'type': 'POST',
                     'url': base + path,
                     'dataType': 'json',
                     'data': form.serialize(),
                     'complete': function(xhr, status) {
 
+                        var data = $.parseJSON(xhr.responseText);
+
                         $('input,select,textarea', form).attr('disabled', null);
-
-/*                        $('input,select,textarea', form).attr('disabled', null);
-                        $('.control-group', form).removeClass('error');
-                        $('.help-block,.alert', form).remove(); */
-
-                        if(h && h['after_submit']) h['after_submit']();
 
                         if(status == "success") {
 
-                            form.html('<div class="alert alert-success">✔</div>');
+                            if(h && h['after_submit'] && !h['after_submit'](xhr, of)) return;
+
+                            var success = $('<div class="alert alert-success"></div>');
+                            if(data && data['detail']) success.text(data['detail']);
+                            form.html(success);
+
                             return;
                         }
 
-                        var data = $.parseJSON(xhr.responseText);
 
                         if(!data) {
 
