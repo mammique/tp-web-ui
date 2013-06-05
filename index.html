@@ -303,6 +303,12 @@ function whoami() {
                         });
 
                     $('#auth #user').append(logout);
+
+                    var p = path_info();
+                    var q = p['query'];
+                    p = p['path'];
+
+                    if(q['next'] && (p == '/auth/user/create/' || p == '/auth/login/')) document.location = q['next'];
                 }
             }
         }
